@@ -1,6 +1,4 @@
-from PyQt4 import QtGui, QtCore
-from qgis.core import *
-from qgis.networkanalysis import *
+
 
 def makeUndirectedGraph(network_layer, points=list):
     graph = None
