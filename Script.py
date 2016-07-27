@@ -64,10 +64,23 @@ for index, segment in enumerate(network.getFeatures()):
 # Build graph
 graph, tied_points = makeUndirectedGraph(network, cost_field, points)
 i = 0
-while i < 20:
+while i < 2:
     tree, cost = QgsGraphAnalyzer.dijkstra(graph, i, 0)
-    print i
-    i += 1
+    s = 0
+    print s
+    while s < len(cost):
+        if s != i: # ignore destination
+            origin = s
+            route = []
+            while cost[origin] < 0:
+                incoming_edges = graph.vertex(s).inArc()
+                print incoming_edges
+                min_cost_edge = min([cost[arc] for arc in incoming_edges])
+                route.append(s)
+                origin = min_cost_edge
+                print origin
+    s += 1
+i += 1
 # Create cost tree from network
 # i = 0
 # # while i < len(points):
