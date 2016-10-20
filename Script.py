@@ -22,6 +22,8 @@ class customCost(QgsArcProperter):
         l.append(self.cost_column_index);
         return l
 
+
+
 def makeUndirectedGraph(network_layer, cost_field, points):
     graph = None
     tied_points = []
