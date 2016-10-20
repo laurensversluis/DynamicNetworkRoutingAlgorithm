@@ -1,6 +1,9 @@
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+
 from qgis.core import *
+from qgis.gui import *
 from qgis.networkanalysis import *
-from qgis.utils import *
 
 class customCost(QgsArcProperter):
     def __init__(self, costColumIndex, defaultValue):
@@ -48,6 +51,36 @@ def calculateCostTree(graph, tied_points, origin, cutoff, impedance=0):
 
     return cost_tree
 
+def calculateRouteDijkstra(graph, tied_points, origin, destination, impedance=0):
+    points = []
+    if tied_points:
+        try:
+            from_point = tied_points[origin]
+            to_point = tied_points[destination]
+        except:
+            print 'poo'
+            return points
+
+        # analyse graph
+        if graph:
+            from_id = graph.findVertex(from_point)
+            to_id = graph.findVertex(to_point)
+
+            (tree, cost) = QgsGraphAnalyzer.dijkstra(graph, from_id, impedance)
+
+            if tree[to_id] == -1:
+                pass
+            else:
+                curPos = to_id
+                while curPos != from_id:
+                    points.append(graph.vertex(graph.arc(tree[curPos]).inVertex()).point())
+                    curPos = graph.arc(tree[curPos]).outVertex()
+
+                points.append(from_point)
+                points.reverse()
+
+    return points
+
 # Load Network
 network = QgsVectorLayer("R:/RND_Projects/Project/RND073_QGIS_Toolkit/RND073_Project_Work/RND073_Axial/RND073_Existing/ae_network.shp",
                                "network",
@@ -59,31 +92,46 @@ cutoff = 2000
 # Root dictionary
 points = []
 for index, segment in enumerate(network.getFeatures()):
-    points.append(segment.geometry().centroid().asPoint())
+    points.extend(segment.geometry().asPolyline())
+unique_points = list(set(points))
 
 # Build graph
-graph, tied_points = makeUndirectedGraph(network, cost_field, points)
-i = 0
-while i < 2:
-    tree, cost = QgsGraphAnalyzer.dijkstra(graph, i, 0)
-    s = 0
-    print s
-    while s < len(cost):
-        if s != i: # ignore destination
-            origin = s
-            route = []
-            while cost[origin] < 0:
-                incoming_edges = graph.vertex(s).inArc()
-                print incoming_edges
-                min_cost_edge = min([cost[arc] for arc in incoming_edges])
-                route.append(s)
-                origin = min_cost_edge
-                print origin
-    s += 1
-i += 1
-# Create cost tree from network
+graph, tied_points = makeUndirectedGraph(network, cost_field, unique_points)
+
+# Calculate paths
+for
+results = []
+origin = 0
+for index in range(len(tied_points)):
+    points = calculateRouteDijkstra(graph, tied_points, origin, index)
+
+print 'finito!'
+
+
+
+
+#     s += 1
+# i += 1
+# # Create cost tree from network
 # i = 0
 # # while i < len(points):
 # cost_tree = calculateCostTree(graph, tied_points, i, cutoff)
 #     print i
 #     i += 1
+
+# i = 0
+# while i < 2:
+#     tree, cost = QgsGraphAnalyzer.dijkstra(graph, i, 0)
+#     s = 0
+#     print s
+#     while s < len(cost):
+#         if s != i: # ignore destination
+#             origin = s
+#             route = []
+#             while cost[origin] < 0:
+#                 incoming_edges = graph.vertex(s).inArc()
+#                 print incoming_edges
+#                 min_cost_edge = min([cost[arc] for arc in incoming_edges])
+#                 route.append(s)
+#                 origin = min_cost_edge
+#                 print origin
