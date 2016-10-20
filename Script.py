@@ -91,21 +91,26 @@ network = QgsVectorLayer("R:/RND_Projects/Project/RND073_QGIS_Toolkit/RND073_Pro
 cost_field = 'cost'
 cutoff = 2000
 
-# Root dictionary
+# Get nodes
 points = []
 for index, segment in enumerate(network.getFeatures()):
     points.extend(segment.geometry().asPolyline())
 unique_points = list(set(points))
 
+# Create result dictionary
+results = {}
+for point in unique_points:
+	result[point] = 0
+
 # Build graph
 graph, tied_points = makeUndirectedGraph(network, cost_field, unique_points)
 
 # Calculate paths
-for
-results = []
 origin = 0
-for index in range(len(tied_points)):
-    points = calculateRouteDijkstra(graph, tied_points, origin, index)
+for destination in range(len(tied_points)):
+    if destination != origin:
+		for point in calculateRouteDijkstra(graph, tied_points, origin, destination):
+			result[point] += 1
 
 print 'finito!'
 
