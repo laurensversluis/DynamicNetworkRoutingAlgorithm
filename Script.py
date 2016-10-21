@@ -100,17 +100,17 @@ unique_points = list(set(points))
 # Create result dictionary
 results = {}
 for point in unique_points:
-	result[point] = 0
+	results[point] = 0
 
 # Build graph
 graph, tied_points = makeUndirectedGraph(network, cost_field, unique_points)
 
 # Calculate paths
-origin = 0
-for destination in range(len(tied_points)):
-    if destination != origin:
-		for point in calculateRouteDijkstra(graph, tied_points, origin, destination):
-			result[point] += 1
+for origin in range(10):
+    for destination in range(len(tied_points)):
+        if destination != origin:
+            for point in calculateRouteDijkstra(graph, tied_points, origin, destination):
+                results[point] += 1
 
 print 'finito!'
 
