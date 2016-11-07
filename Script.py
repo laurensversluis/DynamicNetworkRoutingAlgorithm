@@ -82,11 +82,7 @@ def calculateRouteDijkstra(graph, tied_points, origin, destination, impedance=0)
 
     return points
 
-def calculateTreeDijkstra(graph, tied_points, origin, radius, results, impedance=0):
-    if tied_points:
-        to_point = tied_points[origin]
-
-    # analyse graph
+def calculateTreeDijkstra(graph, to_point, radius, graph_dict, impedance=0):
     if graph:
         to_id = graph.findVertex(to_point)
 
@@ -97,23 +93,23 @@ def calculateTreeDijkstra(graph, tied_points, origin, radius, results, impedance
                 pass
             else:
                 vertex_id = graph.arc(edge).inVertex()
-                print vertex_id
 
                 while cost[vertex_id] > 0:
-                    results[vertex_id] += 1
-
+                    # for node, connected_vertices in graph_iter
+                    graph_dict[vertex_id]['path_count'] += 1
+                    outgoing_edge_ids = graph.vertex(vertex_id).inArc() + graph.vertex(vertex_id).outArc()
                     outgoing_costs = [cost[graph.arc(outgoing_edge).inVertex()] for outgoing_edge in outgoing_edge_ids]
                     min_cost_index = outgoing_costs.index(min(outgoing_costs))
                     vertex_id = graph.arc(outgoing_edge_ids[min_cost_index]).inVertex()
 
-    return results
+    return graph_dict
 
 # # Load Network
-# network = QgsVectorLayer("R:/RND_Projects/Project/RND073_QGIS_Toolkit/RND073_Project_Work/RND073_Axial/RND073_Existing/ae_network.shp",
-#                                "network",
-#                                "ogr")
+network = QgsVectorLayer("R:/RND_Projects/Project/RND073_QGIS_Toolkit/RND073_Project_Work/RND073_Axial/RND073_Existing/ae_network.shp",
+                               "network",
+                               "ogr")
 
-network = QgsVectorLayer("/Users/laurensversluis/Google Drive/Utopia_Cureton_Versluis/Ax_Ex_P/Ax_Ex_P.shp","network", "ogr")
+# network = QgsVectorLayer("/Users/laurensversluis/Google Drive/Utopia_Cureton_Versluis/Ax_Ex_P/Ax_Ex_P.shp","network", "ogr")
 
 cost_field = 'cost'
 cutoff = 50000
@@ -131,16 +127,21 @@ graph, tied_points = makeUndirectedGraph(network, cost_field, unique_points)
 graph_dict = {graph.findVertex(tied_point): {'neighbours': [], 'path_count': 0} for tied_point in tied_points}
 
 # Update neighbours
-for edge in graph.edgeCount:
-    # get vertices
-    # get neighbouring arcs
-    # get neighbouring vertices
+for vertex_id in range(len(tied_points)):
+
+    # Get edges
+    incoming_vertex_ids = [graph.arc(edge_id).outVertex() for edge_id in graph.vertex(vertex_id).inArc()]
+    outgoing_vertex_ids = [graph.arc(edge_id).inVertex() for edge_id in graph.vertex(vertex_id).outArc()]
+    connected_vertices = incoming_vertex_ids + outgoing_vertex_ids
+
     # update graph_dict
+    graph_dict[vertex_id]['neighbours'] = connected_vertices
 
 # Update path count
 for origin in range(10):
     print origin
-    results = calculateTreeDijkstra(graph, tied_points, origin, cutoff, results)
+    to_point = tied_points[origin]
+    graph_dict = calculateTreeDijkstra(graph, to_point, cutoff, graph_dict)
 
 
 print 'finito!'
