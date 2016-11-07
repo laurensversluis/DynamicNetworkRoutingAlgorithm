@@ -23,7 +23,6 @@ class customCost(QgsArcProperter):
         return l
 
 
-
 def makeUndirectedGraph(network_layer, cost_field, points):
     graph = None
     tied_points = []
@@ -82,41 +81,37 @@ def calculateRouteDijkstra(graph, tied_points, origin, destination, impedance=0)
 
     return points
 
-def calculateTreeDijkstra(graph, tied_points, origin, radius, results, impedance=0):
-    if tied_points:
-        to_point = tied_points[origin]
+def calculateTreeDijkstra(graph, to_node_id, radius, neighbours, results):
 
-    # analyse graph
-    if graph:
-        to_id = graph.findVertex(to_point)
+    (tree, cost) = QgsGraphAnalyzer.dijkstra(graph, to_node_id, 0)
 
-        (tree, cost) = QgsGraphAnalyzer.dijkstra(graph, to_id, impedance)
+    for edge in range(len(cost)):
+        if cost[edge] > radius and tree[edge] == -1:
+            pass
+        else:
+            vertex_id = graph.arc(edge).inVertex()
 
-        for edge in range(len(cost)):
-            if cost[edge] > radius and tree[edge] == -1:
-                pass
-            else:
-                vertex_id = graph.arc(edge).inVertex()
-                print vertex_id
+            while cost[vertex_id] > 0:
+                # Determine neighbouring edge with minimum cost
+                connected_vertex_ids = neighbours[vertex_id]
+                cost_list = [cost[vertex_id] for vertex_id in connected_vertex_ids]
+                min_cost_index = cost_list.index(min(cost_list))
+                vertex_id = connected_vertex_ids[min_cost_index]
+                # Write result
+                results[vertex_id] += 1
 
-                while cost[vertex_id] > 0:
-                    results[vertex_id] += 1
 
-                    outgoing_costs = [cost[graph.arc(outgoing_edge).inVertex()] for outgoing_edge in outgoing_edge_ids]
-                    min_cost_index = outgoing_costs.index(min(outgoing_costs))
-                    vertex_id = graph.arc(outgoing_edge_ids[min_cost_index]).inVertex()
 
-    return results
 
 # # Load Network
 # network = QgsVectorLayer("R:/RND_Projects/Project/RND073_QGIS_Toolkit/RND073_Project_Work/RND073_Axial/RND073_Existing/ae_network.shp",
 #                                "network",
 #                                "ogr")
 
-network = QgsVectorLayer("/Users/laurensversluis/Google Drive/Utopia_Cureton_Versluis/Ax_Ex_P/Ax_Ex_P.shp","network", "ogr")
+network = QgsVectorLayer("/Users/laurensversluis/Google Drive/GEO-Server/Central_London.shp","network", "ogr")
 
 cost_field = 'cost'
-cutoff = 50000
+cutoff = 500
 
 # Get nodes
 points = []
@@ -128,48 +123,25 @@ unique_points = list(set(points))
 graph, tied_points = makeUndirectedGraph(network, cost_field, unique_points)
 
 # Result dictionary
-graph_dict = {graph.findVertex(tied_point): {'neighbours': [], 'path_count': 0} for tied_point in tied_points}
+results = {graph.findVertex(tied_point): 0 for tied_point in tied_points}
+neighbours = {graph.findVertex(tied_point): [] for tied_point in tied_points}
+
 
 # Update neighbours
-for edge in graph.edgeCount:
+for vertex_id in range(len(tied_points)):
     # get vertices
-    # get neighbouring arcs
-    # get neighbouring vertices
-    # update graph_dict
+    incoming_vertex_ids = [graph.arc(edge_id).inVertex() for edge_id in graph.vertex(vertex_id).outArc()]
+    outgoing_vertex_ids = [graph.arc(edge_id).outVertex() for edge_id in graph.vertex(vertex_id).inArc()]
+    connected_vertex_ids = incoming_vertex_ids + outgoing_vertex_ids
+
+    # update results
+    neighbours[vertex_id] = connected_vertex_ids
 
 # Update path count
 for origin in range(10):
     print origin
-    results = calculateTreeDijkstra(graph, tied_points, origin, cutoff, results)
-
+    to_point = tied_points[origin]
+    to_point_id = graph.findVertex(to_point)
+    calculateTreeDijkstra(graph, to_point_id, cutoff, neighbours, results)
 
 print 'finito!'
-
-
-
-
-#     s += 1
-# i += 1
-# # Create cost tree from network
-# i = 0
-# # while i < len(points):
-# cost_tree = calculateCostTree(graph, tied_points, i, cutoff)
-#     print i
-#     i += 1
-
-# i = 0
-# while i < 2:
-#     tree, cost = QgsGraphAnalyzer.dijkstra(graph, i, 0)
-#     s = 0
-#     print s
-#     while s < len(cost):
-#         if s != i: # ignore destination
-#             origin = s
-#             route = []
-#             while cost[origin] < 0:
-#                 incoming_edges = graph.vertex(s).inArc()
-#                 print incoming_edges
-#                 min_cost_edge = min([cost[arc] for arc in incoming_edges])
-#                 route.append(s)
-#                 origin = min_cost_edge
-#                 print origin
