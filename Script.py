@@ -86,29 +86,51 @@ def calculateTreeDijkstra(graph, to_id, radius, graph_dict, results, impedance=0
 
         (tree, cost) = QgsGraphAnalyzer.dijkstra(graph, to_id, impedance)
 
-
         for i in range(0, graph.arcCount()):
             inVertexId = graph.arc(i).inVertex()
-            print cost[inVertexId]
             if cost[inVertexId] < radius and tree[inVertexId] != -1:
                 while cost[inVertexId] > 0:
-                    print '!'
-                    results[inVertexId] += 1
+                    # connected_vertices = graph_dict[inVertexId]
+                    # if len(connected_vertices) > 1:
+                    #     connected_vertex_costs = []
+                    #     for vertex_id in connected_vertices:
+                    #         connected_vertex_costs.append(cost[vertex_id])
+                    #     min_cost_index = connected_vertex_costs.index(min(connected_vertex_costs))
+                    #     nextVertexId = connected_vertices[min_cost_index]
+                    # else:
+                    #     nextVertexId = connected_vertices[0]
                     connected_vertices = graph_dict[inVertexId]
-                    outgoing_costs = [cost[connected_vertex_id] for connected_vertex_id in connected_vertices]
-                    min_cost_index = outgoing_costs.index(min(outgoing_costs))
-                    inVertexId = connected_vertices[min_cost_index]
+                    if connected_vertices > 1:
+                        outgoing_costs = [cost[connected_vertex_id] for connected_vertex_id in connected_vertices]
+                        min_cost_index = outgoing_costs.index(min(outgoing_costs))
+                        inVertexId = connected_vertices[min_cost_index]
+                    else:
+                        inVertexId = connected_vertices[0]
+                    results[inVertexId] += 1
 
+
+def minEdgeCost(graph_dict, vertexId, cost):
+    connected_vertices = graph_dict[vertexId]
+
+    if len(connected_vertices) > 1:
+        connected_vertex_costs = []
+        for vertex_id in connected_vertices:
+            connected_vertex_costs.append(cost[vertex_id])
+        nextVertexId = connected_vertices[connected_vertex_costs.index(min(connected_vertex_costs))]
+    else:
+        nextVertexId = connected_vertices[0]
+
+    return nextVertexId
 
 
 # # Load Network
-# network = QgsVectorLayer("R:/RND_Projects/Project/RND073_QGIS_Toolkit/RND073_Project_Work/RND073_Axial/RND073_Existing/ae_network.shp",
-#                                "network",
-#                                "ogr")
+network = QgsVectorLayer("R:/RND_Projects/Project/RND073_QGIS_Toolkit/RND073_Project_Work/RND073_Axial/RND073_Existing/ae_network.shp",
+                               "network",
+                               "ogr")
 
-network = QgsVectorLayer("/Users/laurensversluis/Google Drive/Utopia_Cureton_Versluis/Ax_Ex_P/Ax_Ex_P.shp",
-                         "network",
-                         "ogr")
+# network = QgsVectorLayer("/Users/laurensversluis/Google Drive/Utopia_Cureton_Versluis/Ax_Ex_P/Ax_Ex_P.shp",
+#                          "network",
+#                          "ogr")
 
 cost_field = 'cost'
 cutoff = 50000
@@ -140,13 +162,11 @@ for vertex_id in range(len(tied_points)):
     graph_dict[vertex_id] = connected_vertices
 
 # Update path count
-for origin in range(1):
+for vertex_id in range(10):
+    print vertex_id
+    #to_point = graph.findVertex(vertex_id)
 
-    to_point = graph.findVertex(tied_points[origin])
-
-    print origin
-    calculateTreeDijkstra(graph, 200, cutoff, graph_dict, results)
-
+    calculateTreeDijkstra(graph, vertex_id, cutoff, graph_dict, results)
 
 print 'finito!'
 
