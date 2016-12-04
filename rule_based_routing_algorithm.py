@@ -6,6 +6,8 @@ from qgis.core import *
 from qgis.gui import *
 from qgis.networkanalysis import *
 
+import math
+
 # Creating replacement for the standard network analysis proporter
 class customCostProperter(QgsArcProperter):
     def __init__(self, costColumIndex, defaultValue):
@@ -25,7 +27,7 @@ class customCostProperter(QgsArcProperter):
         return l
 
 
-class network():
+class primalGraph():
 
     def __init__(self, vectorLayer, costField):
         self.vectorLayer = vectorLayer
@@ -54,9 +56,69 @@ class network():
             properter = customCostProperter(networkCostIndex, 0)
             director.addProperter(properter)
             builder = QgsGraphBuilder(vectorLayer.crs())
-            tiedPoints = director.makeGraph(builder, networkPoints)
+            tiedPoints = director.makeGraph(builder, self.getNetworkPoints()) # All nodes are tied into the graph
             graph = builder.graph()
+
         return graph, tiedPoints
+
+
+class dualGraph():
+
+    def __init__(self, primalGraph, tiedPoints):
+        self.primalGraph = primalGraph
+        self.tiedPoints = tiedPoints
+
+        # iterate over features
+    def getConnectedEdges(self, vertexId):
+
+        inEdgeIds = self.primalGraph.vertex(vertexId).inArc()
+        outEdgeIds = self.primalGraph.vertex(vertexId).outArc()
+        conEdgeIds = {inEdgeIds, outEdgeIds}
+
+        return conEdgeIds
+
+
+    def getConnectedVertices(self, vertexId):
+
+        connEdgeIds = self.getConnectedEdges(vertexId)
+
+        connVertexIds = set()
+
+        for edgeId in connEdgeIds:
+            inVertexId = self.primalGraph.arc(edgeId).inVertexId
+            outVertexId = self.primalGraph.arc(edgeId).outVertexId
+            if (inVertexId or outVertexId) != vertexId:
+                if not (inVertexId or outVertexId) in connVertexIds:
+                    connVertexIds.add(inVertexId)
+                    connVertexIds.add(outVertexId)
+
+        return connVertexIds
+
+    def getAngularCost(self, vertexId):
+
+        vertexAngularCosts = []
+
+        np = self.primalGraph.vertex(vertexId).point()
+
+        connVertexIds = self.getConnectedVertices(vertexId)
+
+        for vertexStart in connVertexIds:
+            vp1 = self.primalGraph.vertex(vertex).point()
+            vp1Angle = vp1.azimuth(np)
+            for vertexEnd in connVertexIds:
+                if vertexEnd != vertexStart:
+                    vp2 = self.primalGraph.vertex(vertex).point()
+                    vp2Angle = vp2.azimuth(np)
+                    # Calculating the angle between two edges
+                    angle = 360 - abs(vp1Angle - vp2Angle)
+                    if angle > 180: # wide angles
+                        angleCost = 180 - (360 - abs(angle))
+                    else: # acute angles
+                        angleCost = 180 - angle
+
+            vertexAngularCosts[(vertexStart,vertexEnd)] = angleCost
+
+        return vertexAngularCosts
 
 
 class analysis():
@@ -66,14 +128,19 @@ class analysis():
         self.radius = radius
         self.results = {graph.findVertex(tied_point): 0 for tied_point in tiedPoints}
 
-    def calculateTreeDijkstra(self, toId, impedance=0):
-
-        # Point to id
-
+    def getTreeDijkstra(self, toId, impedance=0):
         (tree, cost) = QgsGraphAnalyzer.dijkstra(self.graph, toId, impedance)
-        (tree, cost) = QgsGraphAnalyzer.dijkstra(self.graph, toId, impedance)
+        return tree, cost
         #Find common points
 
+    def createCostTree(self, treeList):
+
+        for tree, cost in treeList
+            dic
+
+    dict = {node: }
+
+    def calculateBetweenness(self) :
 
         processedFromIds = []
 
