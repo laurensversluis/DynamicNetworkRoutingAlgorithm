@@ -73,7 +73,7 @@ class dualGraph():
 
         inEdgeIds = self.primalGraph.vertex(vertexId).inArc()
         outEdgeIds = self.primalGraph.vertex(vertexId).outArc()
-        conEdgeIds = {inEdgeIds, outEdgeIds}
+        conEdgeIds = [inEdgeIds, outEdgeIds]
 
         return conEdgeIds
 
@@ -122,6 +122,31 @@ class dualGraph():
 
 
 class analysis():
+
+    # Base the analysis on the dual graph if there is one. Otherwise base it on a primal graph.
+
+    # If it is a dual graph angular and topological costs are considered.
+
+    # If it is a primal graph length and other custom costs are considered.
+
+    # Metric and other costs are halved for each segment
+
+    # For each type of costs different trees need to be made.
+
+    # Each arc of each tree is linked by their geometry.
+
+    # Analysis start by initialising the base graph (primal or dual)
+
+    # It then continues by picking an origin and a destination
+
+    # This origin forms the base for all the trees
+
+    # Routing algorithms starts at the origin and considers all the trees costs to work out the best route.
+
+    # Lookup function to get a vertexId using another tree's vertexId.
+
+    #
+
 
     def __init__(self, graph, tiedPoints, radius):
         self.graph = graph
