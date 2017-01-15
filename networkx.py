@@ -4,13 +4,31 @@ import networkx as nx
 
 
 # Add edges and nodes based on dual graph type
-def constructDualGraph(vectorlayer):
+def constructPrimalGraph(vectorlayer, custom_cost_field):
     # Create empty graph
-    g = nx.Graph()
+    G = nx.Graph()
 
     # Read segments and build dualgraph
     for segment in vectorlayer.getFeatures():
+        metric_cost = segment.length()
+        custom_cost = segment[custom_cost_field]
+        # Determine primal nodes
+        seg_start = segment.asPolyline()[0]
+        seg_end = segment.asPolyline()[1]
+        G.add_edge(seg_start, seg_end, 'azimuth'=azimuth, 'metric_cost'=metric_cost, 'custom_cost'=custom_cost)
 
+    return G
+
+def constructDualGraph(primalGraph):
+    # Create empty graph
+    G = nx.Graph()
+    # Read edges and add as nodes to graph
+    for (start_node,end_node,attributes) in primalGraph.edges():
+        start_neighbors = primalGraph.neighbors(start_node)
+        end_neigbors = primalGraph.neighbors(end_node)
+        G.add_node()
+
+    return G
 
 g.addEdge(1,2, angular=0.5, metric=0.5)
 g.addEdge(1,2, angular=0.2, metric=0.5)
