@@ -27,7 +27,7 @@ class customCostProperter(QgsArcProperter):
         return l
 
 
-class primalGraph():
+class Graph:
 
     def __init__(self, vectorLayer, cost='length'):
         self.vectorLayer = vectorLayer
@@ -62,14 +62,13 @@ class primalGraph():
         return graph, tiedPoints
 
 
-class dualGraph():
+class DualGraph:
 
     def __init__(self, vectorLayer, cost='angular'):
         self.vectorLayer = vectorLayer
         self.costType = cost
 
-
-    def createIndex(self):
+    def indexNetwork(self):
         segmentIndex = QgsSpatialIndex()
         segmentDict = {}
         for index, feature in enumerate(self.vectorLayer.getFeatures()):
@@ -78,75 +77,66 @@ class dualGraph():
 
         return segmentIndex, segmentDict
 
-
-    # Create pairs where segments connect
-    def getConnectedPairs(self):
-        processedSegments = set()
-        networkEdges = []
+    def getNetworkVertices(self):
+        processedPoints = set()
+        networkPoints = []
         for feature in self.vectorLayer.getFeatures():
-            edgeGeom = feature.geometry()
-            connectedEdgeIds = index.intersects(edgeGeom.boundingBox())
-            for id in connectedEdgeIds:
-                networkEdges.append()
+            points = feature.geometry().asPolyline()
             if not all(p in processedPoints for p in points):
                 processedPoints.add(point for point in points)
                 networkPoints.extend(points)
 
         return networkPoints
 
-        connectedSegmentsIds = segment_index.intersects(geom.boundingBox()
+    # Create pairs where segments connect
+    def getNetworkEdges(self):
+        networkEdges = []
+        segmentIndex, segmentDict = self.indexNetwork()
+        for index, geom in segmentDict:
+            connectedEdgeIds = segmentIndex.intersects(geom.boundingBox()) # get connected edges
+            for id in connectedEdgeIds:
+                if not (id, index) in networkEdges: # check if reverse edge is already there
+                    networkEdges.append((index,id))
 
-        # iterate over features
-    def getConnectedEdges(self, vertexId):
-
-        inEdgeIds = self.primalGraph.vertex(vertexId).inArc()
-        outEdgeIds = self.primalGraph.vertex(vertexId).outArc()
-        conEdgeIds = [inEdgeIds, outEdgeIds]
-
-        return conEdgeIds
+        return networkEdges
 
 
-    def getConnectedVertices(self, vertexId):
+    def calculateAngularCost(self, id1, id2):
 
-        connEdgeIds = self.getConnectedEdges(vertexId)
+        segmentDict = self.indexNetwork()[1]
 
-        connVertexIds = set()
+        segGeom1 = segmentDict[id1]
+        segGeom2 = segmentDict[id2]
 
-        for edgeId in connEdgeIds:
-            inVertexId = self.primalGraph.arc(edgeId).inVertexId
-            outVertexId = self.primalGraph.arc(edgeId).outVertexId
-            if (inVertexId or outVertexId) != vertexId:
-                if not (inVertexId or outVertexId) in connVertexIds:
-                    connVertexIds.add(inVertexId)
-                    connVertexIds.add(outVertexId)
+        # Calculating the abgle of the individual segments
+        segAngle1 = segGeom1[0].azimuth(segGeom1[1])
+        segAngle2 = segGeom2[0].azimuth(segGeom2[1])
 
-        return connVertexIds
+        # Calculating the angle between two edges
+        angle = 360 - abs(segAngle1 - segAngle2)
+        if angle > 180:  # wide angles
+            angleCost = 180 - (360 - abs(angle))
+        else:  # acute angles
+            angleCost = 180 - angle
 
-    def getAngularCost(self, vertexId):
+        return angleCost
 
-        vertexAngularCosts = []
 
-        np = self.primalGraph.vertex(vertexId).point()
+    def createGraph(self):
+        graph = QgsGraph()
+        vertices = self.getNetworkVertices()
 
-        connVertexIds = self.getConnectedVertices(vertexId)
+        # Add vertices to the graph
+        graph.addVertex(vertex for vertex in vertices)
 
-        for vertexStart in connVertexIds:
-            vp1 = self.primalGraph.vertex(vertex).point()
-            vp1Angle = vp1.azimuth(np)
-            for vertexEnd in connVertexIds:
-                if vertexEnd != vertexStart:
-                    vp2 = self.primalGraph.vertex(vertex).point()
-                    vp2Angle = vp2.azimuth(np)
-                    # Calculating the angle between two edges
-                    angle = 360 - abs(vp1Angle - vp2Angle)
-                    if angle > 180: # wide angles
-                        angleCost = 180 - (360 - abs(angle))
-                    else: # acute angles
-                        angleCost = 180 - angle
+        # Add edges to the graph
+        for id1, id2 in self.getNetworkEdges():
+            cost = self.calculateAngularCost(id1, id2)
+            graph.addArc(id1, id2, cost)
 
-            vertexAngularCosts[(vertexStart,vertexEnd)] = angleCost
+        return graph
 
-        return vertexAngularCosts
+
 
 
 class analysis(primalGraph, dualGraph):
