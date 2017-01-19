@@ -1,8 +1,6 @@
 # Dependencies
 import networkx as nx
 
-
-
 # Add edges and nodes based on dual graph type
 def constructPrimalGraph(vectorlayer, custom_cost_field):
     # Create empty graph
@@ -10,12 +8,15 @@ def constructPrimalGraph(vectorlayer, custom_cost_field):
 
     # Read segments and build dualgraph
     for segment in vectorlayer.getFeatures():
-        metric_cost = segment.length()
+        # Calculating properties
+        geom = segment.geometry()
+        pt1 = QgsPoint(geom.asPolyline()[0])
+        pt2 = QgsPoint(geom.asPolyline()[1])
+        azimuth = pt1.azimuth(pt2)
+        length = geom.length()
         custom_cost = segment[custom_cost_field]
         # Determine primal nodes
-        seg_start = segment.asPolyline()[0]
-        seg_end = segment.asPolyline()[1]
-        G.add_edge(seg_start, seg_end, 'azimuth'=azimuth, 'metric_cost'=metric_cost, 'custom_cost'=custom_cost)
+        G.add_edge(pt1, pt2, azimuth=azimuth, metric_cost=length, custom_cost=custom_cost)
 
     return G
 
@@ -23,8 +24,22 @@ def constructDualGraph(primalGraph):
     # Create empty graph
     G = nx.Graph()
     # Read edges and add as nodes to graph
-    for (start_node,end_node,attributes) in primalGraph.edges():
+    for start_node, end_node, azimuth in primalGraph.edges(data='azimuth'):
+        #
         start_neighbors = primalGraph.neighbors(start_node)
+        end_neigbors = primalGraph.neighbors(end_node)
+        neighbors = [start_neighbors, end_neigbors]
+        for node in start_neighbors:
+            if not node = end_node:
+                edge = (start_node, node)
+                edge_azimuth = primalGraph[start_node][end_node]['azimuth']
+                # Calculating the angle between two edges
+                angle = 360 - abs(azimuth - edge_azimuth)
+                if angle > 180: # wide angles
+                    angleCost = 180 - (360 - abs(angle))
+                else: # acute angles
+                    angleCost = 180 - angle
+
         end_neigbors = primalGraph.neighbors(end_node)
         G.add_node()
 
