@@ -122,13 +122,89 @@ def writeGraph(graph):
     QgsMapLayerRegistry.instance().addMapLayer(vl)
 
 
+def routeDual(graph, cost, source, target):
+
+    if cost == 'angle':
+
+        # Determining neighboring node closest to target
+        current_distance = nx.shortest_path_length(graph, source=source, target=target, weight='angle_cost')
+        neighbors = graph.node[source]
+        distances = []
+        next_node = None
+        for index, node in enumerate(neighbors):
+            distance = nx.shortest_path_length(graph, source=node, target=target, weight='angle_cost')
+            if distance < current_distance: # Don't choose 'rear' nodes
+                if distance < any(distances): # Finding closest node
+                next_node = node
+            distances.append(distance)
+
+        # Determining difference
+        difference_ratio = (max(distances) - min(distances)) / max(distances)
+
+
+    elif type == 'topological':
+        # Determining neighboring node closest to target
+        current_distance = nx.shortest_path_length(graph, source=source, target=target)
+        neighbors = graph.node[source]
+        distances = []
+        next_node = None
+        for index, node in enumerate(neighbors):
+            distance = nx.shortest_path_length(graph, source=node, target=target)
+            if distance < current_distance:  # Don't choose 'rear' nodes
+                if distance < any(distances):  # Finding closest node
+                    next_node = node
+            distances.append(distance)
+
+        # Determining difference
+        difference_ratio = (max(distances) - min(distances)) / max(distances)
+
+    return next_node, difference_ratio
+
+def routePrimal(graph, cost, source, target):
+
+    # Determining neighboring node closest to target
+    current_distance = nx.shortest_path_length(graph, source=source, target=target, weight=cost)
+    neighbors = graph.node[source]
+    distances = []
+    next_node = None
+    for index, node in enumerate(neighbors):
+        distance = nx.shortest_path_length(graph, source=node, target=target, weight=cost)
+        if distance < current_distance:  # Don't choose 'rear' nodes
+            if distance < any(distances):  # Finding closest node
+                next_node = node
+        distances.append(distance)
+
+    # Determining difference
+    difference_ratio = (max(distances) - min(distances)) / max(distances)
+
+    return next_node, difference_ratio
+
 def routeGraph(graph, source, target, ruling):
+    path = [source, ]  # Travelled edges
 
-    type = ruling['type']
+    node = source
+    while node != target:
 
+
+        connected_nodes = g.neighbors(node)
+        min_distance = None
+        new_node = None
+        for node in connected_nodes:
+            if not node in path:  # No turning back
+                for cost, pct in cost_formula
+                    distance = nx.shortest_path_length(g, node, target, cost) * pct
+                    if distance < min_distance or min_distance = None:
+                        new_node = node
+
+        path.append(new_node)
+        node = new_node
+
+    return path
 
 G = constructPrimalGraph(vectorlayer, 'id')
 DG = constructDualGraph(G)
 writeGraph(DG)
-
-ruling = {'type': 'dual', 'priority': ['angle', 'metric', 'custom'], }
+# Type is either primal graph or dual graph
+# Priority indicates the order of costs examined
+# Switch ratio indicates the pct of improvement
+ruling = {'type': 'dual', 'priority': ['angle', 'metric', 'custom'], 'switch_ratio': 0.1}
