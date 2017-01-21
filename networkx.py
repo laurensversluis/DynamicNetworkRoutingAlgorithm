@@ -45,12 +45,12 @@ def constructDualGraph(primalGraph):
 
     return G
 
-g.addEdge(1,2, angular=0.5, metric=0.5)
-g.addEdge(1,2, angular=0.2, metric=0.5)
-g.addEdge(1,3, angular=0.8, metric=0.5)
-g.addEdge(2,4, angular=0.2, metric=0.5)
-g.addEdge(3,4, angular=0.6, metric=0.5)
-g.addEdge(4,5, angular=0.2, metric=0.5)
+    g.addEdge(1,2, angular=0.5, metric=0.5)
+    g.addEdge(1,2, angular=0.2, metric=0.5)
+    g.addEdge(1,3, angular=0.8, metric=0.5)
+    g.addEdge(2,4, angular=0.2, metric=0.5)
+    g.addEdge(3,4, angular=0.6, metric=0.5)
+    g.addEdge(4,5, angular=0.2, metric=0.5)
 
 
 # Cost formula
@@ -76,3 +76,39 @@ def routeGraph(source, target, cost_formula):
     return path
 
 path = routePath(1,5)
+
+# Creating edges
+dual_node1 = QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(pn2)]).centroid().asPoint()
+# Construction of all connections to start node
+start_neighbors = primalGraph.neighbors(pn1)
+for node in start_neighbors:
+    if not node == pn2:
+        edge_azimuth = primalGraph[pn1][node]['azimuth']
+        # Calculating the angle between two edges
+        angle = 360 - abs(azimuth - edge_azimuth)
+        if angle > 180:  # wide angles
+            angleCost = 180 - (360 - abs(angle))
+        else:  # acute angles
+            angleCost = 180 - angle
+        primal_edge2 = (pn1, node)  # target node
+        # Construction addition of the dualGraph edge
+        dual_node2 = QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(node)]).centroid().asPoint()
+        dual_edge = QgsGeometry.fromPolyline([dual_node1, dual_node2])
+        G.add_edge(primal_edge1, primal_edge2, geom=dual_edge, angleCost=angleCost)
+# Construction of all connections to end node
+end_neigbors = primalGraph.neighbors(pn2)
+for node in end_neigbors:
+    if not node == pn1:
+        edge_azimuth = primalGraph[pn2][node]['azimuth']
+        # Calculating the angle between two edges
+        angle = 360 - abs(azimuth - edge_azimuth)
+        if angle > 180:  # wide angles
+            angleCost = 180 - (360 - abs(angle))
+        else:  # acute angles
+            angleCost = 180 - angle
+
+        primal_edge2 = (pn2, node)  # target node
+        # Construction addition of the dualGraph edge
+        dual_node2 = QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(node)]).centroid().asPoint()
+        dual_edge = QgsGeometry.fromPolyline([dual_node1, dual_node2])
+        G.add_edge(primal_edge1, primal_edge2, geom=dual_edge, angleCost=angleCost)
