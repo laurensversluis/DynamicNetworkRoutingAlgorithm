@@ -199,7 +199,7 @@ def routeGraph(graph, source, target, ruling):
                 potential_next_node, difference_ratio = costNode(graph, cost[0], node, target)
 
                 # High proximity benefit and choice of route determine next node
-                if difference_ratio >= cost[1] or difference_ratio == 0:
+                if difference_ratio > cost[1] or difference_ratio == 0:
                     new_node = potential_next_node
                     node = new_node
                     path.append(potential_next_node)
