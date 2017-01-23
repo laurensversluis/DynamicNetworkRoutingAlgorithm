@@ -45,12 +45,13 @@ def constructDualGraph(primalGraph):
         dn_azimuth = pn1_geom.azimuth(pn2_geom)
 
         # Node geometry based on centroid
-        dn_geom = QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(pn2)])
+        dn_geom = QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(pn2)]).centroid()
 
         # Creating graph node
-        dn = dn_geom.centroid().asPoint()
+        dn = dn_geom.asPoint()
         G.add_node(dn,
                    geom=dn_geom,
+                   p_geom=QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(pn2)]),
                    azimuth=dn_azimuth,
                    metric_cost=data['metric_cost'],
                    custom_cost=data['custom_cost'])
@@ -110,7 +111,7 @@ def costNode(graph, cost, source, target):
         neighbors = graph[source]
         distances = []
         next_node = None
-        for index, node in enumerate(neighbors):
+        for node in neighbors:
             distance = nx.shortest_path_length(graph, source=node, target=target, weight='angle_cost')
             if distance < current_distance: # Don't choose 'rear' nodes
                 distances.append(distance)
@@ -120,7 +121,7 @@ def costNode(graph, cost, source, target):
 
         # Determining difference
         if len(distances) > 1:
-            difference_ratio = (max(distances) - min(distances)) / max(distances)
+            difference_ratio = min(distances) / max(distances)
         else:
             difference_ratio = 0
 
@@ -131,7 +132,7 @@ def costNode(graph, cost, source, target):
         neighbors = graph[source]
         distances = []
         next_node = None
-        for index, node in enumerate(neighbors):
+        for node in neighbors:
             distance = nx.shortest_path_length(graph, source=node, target=target)
             if distance < current_distance:  # Don't choose 'rear' nodes
                 distances.append(distance)
@@ -141,7 +142,7 @@ def costNode(graph, cost, source, target):
 
         # Determining difference
         if len(distances) > 1:
-            difference_ratio = (max(distances) - min(distances)) / max(distances)
+            difference_ratio = min(distances) / max(distances)
         else:
             difference_ratio = 0
 
@@ -160,17 +161,18 @@ def costNode(graph, cost, source, target):
 
         # Determining difference
         if len(distances) > 1:
-            difference_ratio = (max(distances) - min(distances)) / max(distances)
+            difference_ratio = min(distances) / max(distances)
         else:
             difference_ratio = 0
 
     elif cost == 'custom':
         # Determining neighboring node closest to target
         current_distance = nx.shortest_path_length(graph, source=source, target=target, weight='metric_cost')
+
         neighbors = graph[source]
         distances = []
         next_node = None
-        for index, node in enumerate(neighbors):
+        for node in neighbors:
             distance = nx.shortest_path_length(graph, source=node, target=target, weight='metric_cost')
             if distance < current_distance:  # Don't choose 'rear' nodes
                 distances.append(distance)
@@ -179,7 +181,7 @@ def costNode(graph, cost, source, target):
 
         # Determining difference
         if len(distances) > 1:
-            difference_ratio = (max(distances) - min(distances)) / max(distances)
+            difference_ratio = min(distances) / max(distances)
         else:
             difference_ratio = 0
 
@@ -187,17 +189,26 @@ def costNode(graph, cost, source, target):
 
 def routeGraph(graph, source, target, ruling):
     path = [source, ]  # Travelled edges
-
     node = source
     while node != target:
-        next_node = None
-        for cost in ruling['priority']:
-            if not next_node:
-                potential_next_node, difference_ratio = costNode(graph, cost, node, target)
-            if difference_ratio < ruling['switch_ratio']:
-                next_node = potential_next_node
-        path.append(next_node)
-        node = next_node
+        new_node = None
+        print node
+        for index, cost in enumerate(ruling):
+            if not new_node:
+                # Determine next node based on current cost
+                potential_next_node, difference_ratio = costNode(graph, cost[0], node, target)
+
+                # High proximity benefit and choice of route determine next node
+                if difference_ratio >= cost[1] or difference_ratio == 0:
+                    new_node = potential_next_node
+                    node = new_node
+                    path.append(potential_next_node)
+
+                # Last rule determines next node
+                elif index == (len(ruling) - 1):
+                    new_node = potential_next_node
+                    node = new_node
+                    path.append(potential_next_node)
 
     return path
 
@@ -238,6 +249,29 @@ def writeGraph(graph):
     QgsMapLayerRegistry.instance().addMapLayer(vl)
 
 
+def writeNodes(graph):
+    # Create network layer
+    vl = QgsVectorLayer("Point", "nodes", "memory")
+    pr = vl.dataProvider()
+
+    # Add id field
+    vl.startEditing()
+    pr.addAttributes([QgsField('id', QVariant.String), ])
+    vl.updateFields()
+
+    # Add features
+    for node, data in graph.nodes(data=True):
+        fet = QgsFeature(vl.pendingFields())
+        fet.setAttribute('id', str(node))
+        geom = data['geom']
+        fet.setGeometry(geom)
+        pr.addFeatures([fet])
+
+    # Save and add to the canvas
+    vl.commitChanges()
+    vl.updateExtents()
+    QgsMapLayerRegistry.instance().addMapLayer(vl)
+
 def writePath(graph, path):
     # Create network layer
     vl = QgsVectorLayer("Linestring", "path", "memory")
@@ -246,7 +280,7 @@ def writePath(graph, path):
     # Getting geometry from graph
     for node in path:
         fet = QgsFeature()
-        geom = graph.node[node]['geom']
+        geom = graph.node[node]['p_geom']
         fet.setGeometry(geom)
         pr.addFeatures([fet])
 
@@ -257,9 +291,10 @@ def writePath(graph, path):
 
 
 
-G = constructPrimalGraph(vectorlayer, 'NACHrN')
+G = constructPrimalGraph(vectorlayer, 'id')
 DG = constructDualGraph(G)
 writeGraph(DG)
-ruling = {'priority': ['angle', 'metric', 'custom'], 'switch_ratio': 0.1}
-path = routeGraph(DG,DG.nodes()[0],DG.nodes()[-1],ruling)
+writeNodes(DG)
+ruling = [('angle', 0.9), ('metric', 0.2)]
+path = routeGraph(DG,DG.nodes()[967],DG.nodes()[2126],ruling)
 writePath(DG, path)
