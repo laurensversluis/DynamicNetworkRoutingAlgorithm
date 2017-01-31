@@ -113,17 +113,16 @@ def costNode(graph, cost, source, target):
         next_node = None
         for node in neighbors:
             distance = nx.shortest_path_length(graph, source=node, target=target, weight='angle_cost')
-            if distance < current_distance: # Don't choose 'rear' nodes
-                distances.append(distance)
-                if distance == min(distances): # Finding closest node
-                    next_node = node
-
+            # if distance < current_distance: # Don't choose 'rear' nodes
+            distances.append(distance)
+            if distance == min(distances): # Finding closest node
+                next_node = node
 
         # Determining difference
         if len(distances) > 1:
-            difference_ratio = min(distances) / max(distances)
+            difference = max(distances) - min(distances)
         else:
-            difference_ratio = 0
+            difference = 0
 
 
     elif cost == 'topological':
@@ -142,9 +141,9 @@ def costNode(graph, cost, source, target):
 
         # Determining difference
         if len(distances) > 1:
-            difference_ratio = min(distances) / max(distances)
+            difference = max(distances) - min(distances)
         else:
-            difference_ratio = 0
+            difference = 0
 
     elif cost == 'metric':
         # Determining neighboring node closest to target
@@ -154,61 +153,58 @@ def costNode(graph, cost, source, target):
         next_node = None
         for node in neighbors:
             distance = nx.shortest_path_length(graph, source=node, target=target, weight='metric_cost')
-            if distance < current_distance:  # Don't choose 'rear' nodes
-                distances.append(distance)
-                if distance == min(distances):  # Finding closest node
-                    next_node = node
+            distances.append(distance)
+            if distance == min(distances):  # Finding closest node
+                next_node = node
 
         # Determining difference
         if len(distances) > 1:
-            difference_ratio = min(distances) / max(distances)
+            difference = max(distances) - min(distances)
         else:
-            difference_ratio = 0
+            difference = 0
 
     elif cost == 'custom':
         # Determining neighboring node closest to target
-        current_distance = nx.shortest_path_length(graph, source=source, target=target, weight='metric_cost')
+        current_distance = nx.shortest_path_length(graph, source=source, target=target, weight='custom_cost')
 
         neighbors = graph[source]
         distances = []
         next_node = None
         for node in neighbors:
-            distance = nx.shortest_path_length(graph, source=node, target=target, weight='metric_cost')
-            if distance < current_distance:  # Don't choose 'rear' nodes
-                distances.append(distance)
-                if distance == min(distances):  # Finding closest node
-                    next_node = node
+            distance = nx.shortest_path_length(graph, source=node, target=target, weight='custom_cost')
+            distances.append(distance)
+            if distance == min(distances):  # Finding closest node
+                next_node = node
 
         # Determining difference
         if len(distances) > 1:
-            difference_ratio = min(distances) / max(distances)
+            difference = max(distances) - min(distances)
         else:
-            difference_ratio = 0
+            difference = 0
 
-    return next_node, difference_ratio
+    return next_node, difference
 
 def routeGraph(graph, source, target, ruling):
     path = [source, ]  # Travelled edges
     node = source
     while node != target:
-        new_node = None
         print node
+        new_node = None
         for index, cost in enumerate(ruling):
             if not new_node:
                 # Determine next node based on current cost
-                potential_next_node, difference_ratio = costNode(graph, cost[0], node, target)
+                potential_next_node, difference = costNode(graph, cost[0], node, target)
 
                 # High proximity benefit and choice of route determine next node
-                if difference_ratio > cost[1] or difference_ratio == 0:
-                    new_node = potential_next_node
-                    node = new_node
-                    path.append(potential_next_node)
+                if difference > cost[1] or difference == 0:
+                    if not potential_next_node in path:
+                        node = potential_next_node
+                        path.append(node)
 
                 # Last rule determines next node
                 elif index == (len(ruling) - 1):
-                    new_node = potential_next_node
-                    node = new_node
-                    path.append(potential_next_node)
+                    node = potential_next_node
+                    path.append(node)
 
     return path
 
@@ -293,8 +289,8 @@ def writePath(graph, path):
 
 G = constructPrimalGraph(vectorlayer, 'id')
 DG = constructDualGraph(G)
-writeGraph(DG)
-writeNodes(DG)
-ruling = [('angle', 0.9), ('metric', 0.2)]
+# writeGraph(DG)
+# writeNodes(DG)
+ruling = [('angle', 900), ('metric', 10)]
 path = routeGraph(DG,DG.nodes()[967],DG.nodes()[2126],ruling)
 writePath(DG, path)
