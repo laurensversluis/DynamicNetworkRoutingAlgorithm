@@ -1,8 +1,25 @@
+import math
 import networkx as nx
 from PyQt4.QtCore import QVariant
 
 vectorlayer = iface.activeLayer()
 
+
+def getAngle(x1, x2, y1, y2):
+    inner_product = x1 * x2 + y1 * y2
+    len1 = math.hypot(x1, y1)
+    len2 = math.hypot(x2, y2)
+    try:
+        angle = math.acos(inner_product / (len1 * len2))
+        ang_deg = math.degrees(angle) % 360
+        if ang_deg - 180 >= 0:
+            # As in if statement
+            return 360 - ang_deg
+        else:
+
+            return ang_deg
+    except:
+        return None
 
 def constructPrimalGraph(vectorlayer, custom_cost_field):
     # Create undirected empty graph
@@ -16,33 +33,18 @@ def constructPrimalGraph(vectorlayer, custom_cost_field):
         pn2 = geom.asPolyline()[1]
         metric_cost = geom.length()
         custom_cost = segment[custom_cost_field]
+
         # Determine primal nodes
         G.add_edge(pn1, pn2, geom=geom.asPolyline(), metric_cost=metric_cost, custom_cost=custom_cost)
 
     return G
 
-
-def normaliseAngle(azimuth):
-    if azimuth < 180:
-        angle = azimuth
-    else:
-        angle = 180 - azimuth
-
-    return angle
-
-
 def constructDualGraph(primalGraph):
     # Create undirected empty graph
     G = nx.Graph()
-    de_list = []
 
     # Create dual graph nodes
     for pn1, pn2, data in primalGraph.edges_iter(data=True):
-
-        # Calculating azimuth of dual graph node
-        pn1_geom = QgsPoint(data['geom'][0])
-        pn2_geom = QgsPoint(data['geom'][1])
-        dn_azimuth = pn1_geom.azimuth(pn2_geom)
 
         # Node geometry based on centroid
         dn_geom = QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(pn2)]).centroid()
@@ -52,7 +54,6 @@ def constructDualGraph(primalGraph):
         G.add_node(dn,
                    geom=dn_geom,
                    p_geom=QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(pn2)]),
-                   azimuth=dn_azimuth,
                    metric_cost=data['metric_cost'],
                    custom_cost=data['custom_cost'])
 
@@ -60,45 +61,42 @@ def constructDualGraph(primalGraph):
     for pn1, data in primalGraph.nodes_iter(data=True):
 
         # Find neighboring dual graph nodes
-        neighbors = [pn2 for pn2 in primalGraph[pn1]]
+        neighbors = [pn2 for pn2 in primalGraph[pn1] if pn2 != pn1]
 
         # Getting the first neighbor and getting its dual node
         for pn2 in neighbors:
             dn1 = QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(pn2)]).centroid().asPoint()
             dn1_geom = G.node[dn1]['geom']
-            dn1_azimuth = G.node[dn1]['azimuth']
+            dn1_x = pn2.x() - pn1.x()
+            dn1_y = pn2.y() - pn1.y()
             dn1_metric_cost = G.node[dn1]['metric_cost']
             dn1_custom_cost =G.node[dn1]['custom_cost']
-            dn1_angle = normaliseAngle(dn1_azimuth)
+
 
             # Getting the second neighbor and getting its dual node
             for pn3 in neighbors:
-                dn2 = QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(pn3)]).centroid().asPoint()
-                dn2_geom = G.node[dn2]['geom']
-                dn2_azimuth = G.node[dn2]['azimuth']
-                dn2_metric_cost = G.node[dn2]['metric_cost']
-                dn2_custom_cost = G.node[dn2]['custom_cost']
-                dn2_angle = normaliseAngle(dn2_azimuth)
+                if pn3 != pn2:
+                    dn2 = QgsGeometry.fromPolyline([QgsPoint(pn1), QgsPoint(pn3)]).centroid().asPoint()
+                    dn2_geom = G.node[dn2]['geom']
+                    dn2_x = pn3.x() - pn1.x()
+                    dn2_y = pn3.y() - pn1.y()
+                    dn2_metric_cost = G.node[dn2]['metric_cost']
+                    dn2_custom_cost = G.node[dn2]['custom_cost']
 
-                # Calculating the angular cost between the dual nodes / primal edges
-                angle = 180 - abs(dn1_azimuth - dn2_azimuth)
-                if angle < 0:
-                    de_angle_cost = abs(angle)
-                else:
-                    de_angle_cost = 180 - angle
+                    # Calculating the angular cost between the dual nodes / primal edges
+                    de_angle_cost = getAngle(dn1_x, dn2_x, dn1_y, dn2_y)
+                    if de_angle_cost:
+                        de_geom = QgsGeometry.fromPolyline([dn1_geom.asPoint(), dn2_geom.asPoint()])
 
-                # Generating the dual edge geometry
-                de_geom = QgsGeometry.fromPolyline([dn1_geom.asPoint(), dn2_geom.asPoint()])
+                        # Calculating the primal edge costs
+                        de_metric_cost = (0.5 * dn1_metric_cost) + (0.5 * dn2_metric_cost)
+                        de_custom_cost = (0.5 * dn1_custom_cost) + (0.5 * dn2_custom_cost)
 
-                # Calculating the primal edge costs
-                de_metric_cost = (0.5 * dn1_metric_cost) + (0.5 * dn2_metric_cost)
-                de_custom_cost = (0.5 * dn1_custom_cost) + (0.5 * dn2_custom_cost)
-
-                G.add_edge(dn1, dn2,
-                           geom=de_geom,
-                           angle_cost=de_angle_cost,
-                           metric_cost=de_metric_cost,
-                           custom_cost=de_custom_cost)
+                        G.add_edge(dn1, dn2,
+                                   geom=de_geom,
+                                   angle_cost=180 - de_angle_cost,
+                                   metric_cost=de_metric_cost,
+                                   custom_cost=de_custom_cost)
 
     return G
 
@@ -137,7 +135,6 @@ def costNode(graph, cost, source, target):
                 distances.append(distance)
                 if distance == min(distances):  # Finding closest node
                     next_node = node
-
 
         # Determining difference
         if len(distances) > 1:
@@ -187,8 +184,8 @@ def costNode(graph, cost, source, target):
 def routeGraph(graph, source, target, ruling):
     path = [source, ]  # Travelled edges
     node = source
+    length = 0
     while node != target:
-        print node
         new_node = None
         for index, cost in enumerate(ruling):
             if not new_node:
@@ -198,15 +195,17 @@ def routeGraph(graph, source, target, ruling):
                 # High proximity benefit and choice of route determine next node
                 if difference > cost[1] or difference == 0:
                     if not potential_next_node in path:
+                        length += graph[node][potential_next_node]['angle_cost']
                         node = potential_next_node
                         path.append(node)
 
                 # Last rule determines next node
                 elif index == (len(ruling) - 1):
+                    length += graph[node][potential_next_node]['angle_cost']
                     node = potential_next_node
                     path.append(node)
 
-    return path
+    return path, length
 
 
 def writeGraph(graph):
@@ -256,9 +255,9 @@ def writeNodes(graph):
     vl.updateFields()
 
     # Add features
-    for node, data in graph.nodes(data=True):
+    for index, (node, data) in enumerate(graph.nodes(data=True)):
         fet = QgsFeature(vl.pendingFields())
-        fet.setAttribute('id', str(node))
+        fet.setAttribute('id', index)
         geom = data['geom']
         fet.setGeometry(geom)
         pr.addFeatures([fet])
@@ -286,11 +285,14 @@ def writePath(graph, path):
     QgsMapLayerRegistry.instance().addMapLayer(vl)
 
 
-
-G = constructPrimalGraph(vectorlayer, 'id')
+G = constructPrimalGraph(vectorlayer, 'CONN')
 DG = constructDualGraph(G)
 # writeGraph(DG)
 # writeNodes(DG)
-ruling = [('angle', 900), ('metric', 10)]
-path = routeGraph(DG,DG.nodes()[967],DG.nodes()[2126],ruling)
+ruling = [('angle', 20),('metric', 800)]
+path, length = routeGraph(DG, DG.nodes()[886], DG.nodes()[2900], ruling)
+print length
 writePath(DG, path)
+path2 = nx.shortest_path(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost')
+print nx.shortest_path_length(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost  ')
+writePath(DG, path2)
