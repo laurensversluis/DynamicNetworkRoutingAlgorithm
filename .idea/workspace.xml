@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="2a080fa8-ef2f-45b2-892b-185ed88fad6d" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/rule_based_path_finder.py" afterPath="$PROJECT_DIR$/rule_based_path_finder.py" />
     </list>
     <ignored path="AnalyticalEngine.iws" />
@@ -35,8 +34,8 @@
       <file leaf-file-name="rule_based_path_finder.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/rule_based_path_finder.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="3473">
-              <caret line="296" column="104" lean-forward="false" selection-start-line="296" selection-start-column="104" selection-end-line="296" selection-end-column="104" />
+            <state relative-caret-position="443">
+              <caret line="297" column="17" lean-forward="false" selection-start-line="297" selection-start-column="17" selection-end-line="297" selection-end-column="17" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
               </folding>
@@ -546,8 +545,8 @@
     <entry file="file://$PROJECT_DIR$/test.py" />
     <entry file="file://$PROJECT_DIR$/rule_based_path_finder.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3473">
-          <caret line="296" column="104" lean-forward="false" selection-start-line="296" selection-start-column="104" selection-end-line="296" selection-end-column="104" />
+        <state relative-caret-position="443">
+          <caret line="297" column="17" lean-forward="false" selection-start-line="297" selection-start-column="17" selection-end-line="297" selection-end-column="17" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
           </folding>

@@ -287,12 +287,20 @@ def writePath(graph, path):
 
 G = constructPrimalGraph(vectorlayer, 'CONN')
 DG = constructDualGraph(G)
-# writeGraph(DG)
-# writeNodes(DG)
-ruling = [('angle', 20),('metric', 800)]
+writeGraph(DG)
+writeNodes(DG)
+
+# Routing following the ruling
+ruling = [('angle', 40)]
 path, length = routeGraph(DG, DG.nodes()[886], DG.nodes()[2900], ruling)
-print length
 writePath(DG, path)
-path2 = nx.shortest_path(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost')
+
+# Routing using Dijkstra and angular cost
+path2 = nx.shortest_path(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='angle_cost')
+print nx.shortest_path_length(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost  ')
+writePath(DG, path2)
+
+# Routing using Dijkstra and metric cost
+path3 = nx.shortest_path(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost')
 print nx.shortest_path_length(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost  ')
 writePath(DG, path2)
