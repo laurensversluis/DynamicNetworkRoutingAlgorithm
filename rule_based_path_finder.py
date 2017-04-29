@@ -72,7 +72,6 @@ def constructDualGraph(primalGraph):
             dn1_metric_cost = G.node[dn1]['metric_cost']
             dn1_custom_cost =G.node[dn1]['custom_cost']
 
-
             # Getting the second neighbor and getting its dual node
             for pn3 in neighbors:
                 if pn3 != pn2:
@@ -100,7 +99,6 @@ def constructDualGraph(primalGraph):
 
     return G
 
-
 def costNode(graph, cost, source, target):
 
     if cost == 'angle':
@@ -111,10 +109,10 @@ def costNode(graph, cost, source, target):
         next_node = None
         for node in neighbors:
             distance = nx.shortest_path_length(graph, source=node, target=target, weight='angle_cost')
-            # if distance < current_distance: # Don't choose 'rear' nodes
-            distances.append(distance)
-            if distance == min(distances): # Finding closest node
-                next_node = node
+            if distance < current_distance: # Don't choose 'rear' nodes
+                distances.append(distance)
+                if distance == min(distances): # Finding closest node
+                    next_node = node
 
         # Determining difference
         if len(distances) > 1:
@@ -150,9 +148,10 @@ def costNode(graph, cost, source, target):
         next_node = None
         for node in neighbors:
             distance = nx.shortest_path_length(graph, source=node, target=target, weight='metric_cost')
-            distances.append(distance)
-            if distance == min(distances):  # Finding closest node
-                next_node = node
+            if distance < current_distance: # Don't choose 'rear' nodes
+                distances.append(distance)
+                if distance == min(distances):  # Finding closest node
+                    next_node = node
 
         # Determining difference
         if len(distances) > 1:
@@ -169,9 +168,10 @@ def costNode(graph, cost, source, target):
         next_node = None
         for node in neighbors:
             distance = nx.shortest_path_length(graph, source=node, target=target, weight='custom_cost')
-            distances.append(distance)
-            if distance == min(distances):  # Finding closest node
-                next_node = node
+            if distance < current_distance:  # Don't choose 'rear' nodes
+                distances.append(distance)
+                if distance == min(distances):  # Finding closest node
+                    next_node = node
 
         # Determining difference
         if len(distances) > 1:
@@ -271,13 +271,17 @@ def writePath(graph, path):
     # Create network layer
     vl = QgsVectorLayer("Linestring", "path", "memory")
     pr = vl.dataProvider()
+    len = 0
 
     # Getting geometry from graph
     for node in path:
         fet = QgsFeature()
         geom = graph.node[node]['p_geom']
+        len += geom.length()
         fet.setGeometry(geom)
         pr.addFeatures([fet])
+
+    print len # This purely for research purposes
 
     # Save and add to the canvas
     vl.commitChanges()
@@ -287,20 +291,25 @@ def writePath(graph, path):
 
 G = constructPrimalGraph(vectorlayer, 'CONN')
 DG = constructDualGraph(G)
-writeGraph(DG)
-writeNodes(DG)
+# writeGraph(DG)
+# writeNodes(DG)
 
-# Routing following the ruling
-ruling = [('angle', 40)]
+# Local Angle
+ruling = [('angle', 90)]
 path, length = routeGraph(DG, DG.nodes()[886], DG.nodes()[2900], ruling)
 writePath(DG, path)
 
-# Routing using Dijkstra and angular cost
-path2 = nx.shortest_path(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='angle_cost')
-print nx.shortest_path_length(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost  ')
-writePath(DG, path2)
+# Local Metric
+ruling = [('metric', 200)]
+path, length = routeGraph(DG, DG.nodes()[886], DG.nodes()[2900], ruling)
+writePath(DG, path)
 
-# Routing using Dijkstra and metric cost
-path3 = nx.shortest_path(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost')
-print nx.shortest_path_length(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost  ')
-writePath(DG, path2)
+# Global Angle
+path = nx.shortest_path(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='angle_cost')
+# print nx.shortest_path_length(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='angle_cost  ')
+writePath(DG, path)
+
+# Global Metric
+path = nx.shortest_path(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='metric_cost')
+# print nx.shortest_path_length(DG, source=DG.nodes()[886], target=DG.nodes()[2900], weight='angle_cost  ')
+writePath(DG, path)
